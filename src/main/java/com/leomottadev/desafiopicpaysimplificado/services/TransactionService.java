@@ -19,17 +19,19 @@ public class TransactionService {
     private UserService userService;
     private TransactionRepository repository;
     private RestTemplate restTemplate;
+    private NotificationService notificationService;
 
     @Value("${app.authorizationApi}")
     private String authorizationApi;
 
-    public TransactionService(UserService userService, TransactionRepository repository, RestTemplate restTemplate) {
+    public TransactionService(UserService userService, TransactionRepository repository, RestTemplate restTemplate, NotificationService notificationService) {
         this.userService = userService;
         this.repository = repository;
         this.restTemplate = restTemplate;
+        this.notificationService = notificationService;
     }
 
-    public void createTransaction(TransactionDTO transaction) throws Exception {
+    public Transaction createTransaction(TransactionDTO transaction) throws Exception {
         User sender = this.userService.findUserById(transaction.senderId());
         User receiver = this.userService.findUserById(transaction.receiverId());
 
@@ -53,6 +55,11 @@ public class TransactionService {
         this.repository.save(newTransaction);
         this.userService.saveUser(sender);
         this.userService.saveUser(receiver);
+
+        this.notificationService.sendNotification(sender,"Transação realizada com sucesso");
+        this.notificationService.sendNotification(receiver, "Transação recebida com sucesso");
+
+        return newTransaction;
     }
 
     public boolean authorizeTransaction(User sender, BigDecimal value) {
