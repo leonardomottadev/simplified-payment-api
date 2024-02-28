@@ -4,30 +4,21 @@ import com.leomottadev.desafiopicpaysimplificado.domain.transaction.Transaction;
 import com.leomottadev.desafiopicpaysimplificado.domain.user.User;
 import com.leomottadev.desafiopicpaysimplificado.dtos.TransactionDTO;
 import com.leomottadev.desafiopicpaysimplificado.repositories.TransactionRepository;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestTemplate;
 
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.Map;
 
 @Service
 public class TransactionService {
-    private UserService userService;
-    private TransactionRepository repository;
-    private RestTemplate restTemplate;
-    private NotificationService notificationService;
+    private final UserService userService;
+    private final TransactionRepository repository;
+    private final AuthorizationService authorizationService;
+    private final NotificationService notificationService;
 
-    @Value("${app.authorizationApi}")
-    private String authorizationApi;
-
-    public TransactionService(UserService userService, TransactionRepository repository, RestTemplate restTemplate, NotificationService notificationService) {
+    public TransactionService(UserService userService, TransactionRepository repository, AuthorizationService authorizationService, NotificationService notificationService) {
         this.userService = userService;
         this.repository = repository;
-        this.restTemplate = restTemplate;
+        this.authorizationService = authorizationService;
         this.notificationService = notificationService;
     }
 
@@ -37,7 +28,7 @@ public class TransactionService {
 
         userService.validateTransaction(sender, transaction.value());
 
-        boolean isAuthorized = this.authorizeTransaction(sender, transaction.value());
+        boolean isAuthorized = this.authorizationService.authorizeTransaction(sender, transaction.value());
 
         if(!isAuthorized) {
             throw new Exception("Transação não autorizada");
@@ -62,12 +53,4 @@ public class TransactionService {
         return newTransaction;
     }
 
-    public boolean authorizeTransaction(User sender, BigDecimal value) {
-        ResponseEntity<Map> authorizationResponse = restTemplate.getForEntity(authorizationApi, Map.class);
-
-        if(authorizationResponse.getStatusCode() == HttpStatus.OK) {
-            String message = (String) authorizationResponse.getBody().get("message");
-            return "Autorizado".equalsIgnoreCase(message);
-        } else return false;
-    }
 }
